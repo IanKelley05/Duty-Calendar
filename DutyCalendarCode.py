@@ -118,6 +118,33 @@ def monthToNum(month_name):
     else:
         raise ValueError(f"Invalid month name: {month_name}")
 
+def formatDescription(coworkers, weekendDuty):
+    """
+    Formats the coworkers and weekend duty dictionaries into a neat string.
+
+    Args:
+        coworkers (dict): Dictionary with roles as keys and names as values.
+        weekendDuty (dict, optional): Dictionary with weekend duty roles as keys and names as values.
+
+    Returns:
+        str: A formatted string representation of the coworkers and weekend duty.
+    """
+    formatted_description = "Coworkers:\n"
+    
+    # Format coworkers
+    for role, name in coworkers.items():
+        formatted_description += f"- {role}: {name.strip() if isinstance(name, str) else 'N/A'}\n"
+    
+    if len(weekendDuty) > 0:
+        # Add a separator before weekend duty
+        formatted_description += "\nWeekend Duty:\n"
+        
+        # Format weekend duty
+        for day, name in weekendDuty.items():
+            formatted_description += f"- {day}: {name.strip() if isinstance(name, str) else 'N/A'}\n"
+
+    return formatted_description.strip()  # Remove trailing newline
+
 def main():
     creds = None
 
@@ -180,6 +207,10 @@ def main():
                         coworkers = checkWhoWorkingWith(idx,weekend, dayColum)
                         start = dayStart(idx, dayColum)
                         numMonth = monthToNum(sheet)
+                        weekendDuty = ""
+                        if weekend:
+                            weekendDuty = checkWeekendDuty(idx, day, satDayDuty, sunDayDuty)
+                        formattedDescription = formatDescription(coworkers, weekendDuty)
                         if dutyStatus == "Desk":
                             timeStart = (f'2025-{numMonth}-{start[0]}T20:00:00-05:00')
                             timeEnd = (f'2025-{numMonth}-{start[0]}T23:59:59-05:00')
@@ -188,7 +219,7 @@ def main():
                             timeEnd = (f'2025-{numMonth}-{start[1]}T08:00:00-05:00')
                         event = {
                             'summary': dutyStatus,
-                            'description': (f"Coworkers:\n{coworkers}"),
+                            'description': formattedDescription,
                             'start': {
                                 'dateTime': timeStart,
                                 'timeZone': 'US/Eastern',
@@ -206,11 +237,9 @@ def main():
                             },
                         }
                         event = service.events().insert(calendarId=calendar_id, body=event).execute()
-                        print(f"\nFound '{name}' in sheet '{sheet}' on day {days[day]} at row {idx + 2} and is {dutyStatus}")
-                        print(f"Coworkers: {coworkers}")
-                        if weekend:
-                            weekendDuty = checkWeekendDuty(idx, day, satDayDuty, sunDayDuty)
-                            print(f"Weekend Duty Workers: {weekendDuty}")
+                        #print(f"\nFound '{name}' in sheet '{sheet}' on day {days[day]} at row {idx + 2} and is {dutyStatus}")
+                        #print(f"Coworkers: {coworkers}")
+                        #print(f"Weekend Duty Workers: {weekendDuty}")
         
     except HttpError as error:
         print(f"An error occurred: {error}")
