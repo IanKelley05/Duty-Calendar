@@ -119,16 +119,6 @@ def monthToNum(month_name):
         raise ValueError(f"Invalid month name: {month_name}")
 
 def formatDescription(coworkers, weekendDuty):
-    """
-    Formats the coworkers and weekend duty dictionaries into a neat string.
-
-    Args:
-        coworkers (dict): Dictionary with roles as keys and names as values.
-        weekendDuty (dict, optional): Dictionary with weekend duty roles as keys and names as values.
-
-    Returns:
-        str: A formatted string representation of the coworkers and weekend duty.
-    """
     formatted_description = "Coworkers:\n"
     
     # Format coworkers
