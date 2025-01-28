@@ -95,8 +95,29 @@ def checkWeekendDuty(row, day, satDayDuty, sunDayDuty):
         "Sunday 2":sunday2
     }
 
-def dayStart(row, dayColum):
-    if row % 5 == 2: # If we are primary
+def monthNameToNum(month_name):
+    """Convert a month name in English to a two-digit month number."""
+    month_names = {
+        "JANUARY": 1, "FEBRUARY": 2, "MARCH": 3, "APRIL": 4, "MAY": 5,
+        "JUNE": 6, "JULY": 7, "AUGUST": 8, "SEPTEMBER": 9, "OCTOBER": 10,
+        "NOVEMBER": 11, "DECEMBER": 12
+    }
+
+    # Get the month number
+    month_num = month_names.get(month_name.upper(), None)
+    if month_num is None:
+        raise ValueError(f"Invalid month name: {month_name}")
+
+    # Return the month number as a two-digit string
+    return f"{month_num:02d}"
+
+
+def dayStart(row, dayColum, current_month):
+    # Convert the current month name to a number using the helper function
+    current_month_num = monthNameToNum(current_month)
+
+    # Determine the start day based on the row
+    if row % 5 == 2:  # If we are primary
         startDay = dayColum[row-1]
     elif row % 5 == 3:
         startDay = dayColum[row-2]
@@ -104,10 +125,37 @@ def dayStart(row, dayColum):
         startDay = dayColum[row-3]
     else:
         startDay = dayColum[row-4]
-    nextDay = startDay + 1
+
+    # Check the number of days in the current month
+    month_days = {
+        1: 31, 2: 28, 3: 31, 4: 30, 5: 31, 6: 30,
+        7: 31, 8: 31, 9: 30, 10: 31, 11: 30, 12: 31
+    }
+
+    # Handle leap years for February
+    year = 2025  # Adjust as needed
+    if int(current_month_num) == 2 and ((year % 4 == 0 and year % 100 != 0) or (year % 400 == 0)):
+        month_days[2] = 29
+
+    # Get days in the current month
+    days_in_month = month_days[int(current_month_num)]
+
+    # Compute next day and handle rollover
+    if startDay == days_in_month:
+        nextDay = 1
+        nextMonth = int(current_month_num) + 1 if int(current_month_num) < 12 else 1
+    else:
+        nextDay = startDay + 1
+        nextMonth = int(current_month_num)
+
+    # Format days and months as two-digit strings
     startDay = f"{startDay:02d}"
     nextDay = f"{nextDay:02d}"
-    return startDay, nextDay
+    nextMonth = f"{nextMonth:02d}"
+
+    # Return results
+    return startDay, nextDay, nextMonth
+
 
 def monthToNum(month_name):
     sheetNames = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY"]
@@ -195,18 +243,22 @@ def main():
                     dutyStatus = checkDutyStatus(idx + 2, weekend)
                     if value == name:
                         coworkers = checkWhoWorkingWith(idx,weekend, dayColum)
-                        start = dayStart(idx, dayColum)
-                        numMonth = monthToNum(sheet)
+                        startDay, nextDay, nextMonth = dayStart(idx, dayColum, sheet)
+                        numMonth = monthNameToNum(sheet)
                         weekendDuty = ""
                         if weekend:
                             weekendDuty = checkWeekendDuty(idx, day, satDayDuty, sunDayDuty)
                         formattedDescription = formatDescription(coworkers, weekendDuty)
                         if dutyStatus == "Desk":
-                            timeStart = (f'2025-{numMonth}-{start[0]}T20:00:00-05:00')
-                            timeEnd = (f'2025-{numMonth}-{start[0]}T23:59:59-05:00')
+                            timeStart = (f'2025-{numMonth}-{startDay}T19:00:00-05:00')
+                            if nextMonth != numMonth:
+                                numMonth = nextMonth
+                            timeEnd = (f'2025-{numMonth}-{startDay}T23:59:59-05:00')
                         else:
-                            timeStart = (f'2025-{numMonth}-{start[0]}T19:00:00-05:00')
-                            timeEnd = (f'2025-{numMonth}-{start[1]}T08:00:00-05:00')
+                            timeStart = (f'2025-{numMonth}-{startDay}T19:00:00-05:00')
+                            if nextMonth != numMonth:
+                                numMonth = nextMonth
+                            timeEnd = (f'2025-{numMonth}-{nextDay}T08:00:00-05:00')
                         event = {
                             'summary': dutyStatus,
                             'description': formattedDescription,
@@ -226,8 +278,10 @@ def main():
                                 ],
                             },
                         }
+                        print(timeStart)
+                        print(timeEnd)
                         event = service.events().insert(calendarId=calendar_id, body=event).execute()
-                        #print(f"\nFound '{name}' in sheet '{sheet}' on day {days[day]} at row {idx + 2} and is {dutyStatus}")
+                        print(f"\nFound '{name}' in sheet '{sheet}' on day {days[day]} at row {idx + 2} and is {dutyStatus}")
                         #print(f"Coworkers: {coworkers}")
                         #print(f"Weekend Duty Workers: {weekendDuty}")
         
